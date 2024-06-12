@@ -5,7 +5,7 @@ const net = require('net');
 const app = express();
 const port = 3000;
 const env_port = 80;
-const env_host = '192.168.1.105';
+const env_host = '192.168.1.102';
 const { addLogs } = require('./model/logs');
 const utils = require('./model/utils');
 const dummyCC = true;
@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 });
 
 // Create - Menambahkan pengguna baru
-app.post('/lan', (req, res) => {
+app.post('/debit', (req, res) => {
     const client = new net.Socket();
     const binArray = [];
     const bin = [];
@@ -112,7 +112,7 @@ app.post('/lan', (req, res) => {
 
     binArray.push(utils.binToArry(utils.hex2bin("03")));
 
-    console.log("binArray.length", binArray.length);
+    console.log("binArray.length", binArray);
 
 
     LRC = utils.binaryArrayToHex(utils.xorOperation(binArray));
@@ -123,7 +123,7 @@ app.post('/lan', (req, res) => {
         MessageData +
         ETX +
         LRC;
-
+    console.log()
     addLogs(postData);
 
     const rest = {
@@ -131,45 +131,44 @@ app.post('/lan', (req, res) => {
         body: req.body,
         postData: postData,
     }
-
-    client.setTimeout(5000); // Timeout setiap 5 detik
+    console.log(summaryLength);
+    // client.setTimeout(5000); // Timeout setiap 5 detik
     
-    client.connect({ host: env_host, port: env_port }, function () {
-        console.log('Connected to server');
-        //  client.write(postData);
-        // setTimeout(function () { 
-        //     client.on('data', function (data) {
-        //         console.log("Read ", Math.random(), data);
-        //         client.write('\x06');
-        //         client.destroy();
-        //         console.log(`client.destroy() >> ${env_host}:${env_port} `);
-        //     });
-        // }, 2000); 
-        res.status(200).send('Connected to server');
-    });
-    client.on('timeout', () => {
-        console.error('Connection timeout');
-        client.destroy(); // Menutup socket jika timeout terjadi
-        res.status(500).send('Connection timeout');
-      });
-    // Menangani event 'error'
-    client.on('error', (err) => {
-        console.error('Connection error:', err.message);
-        // Menutup socket jika terjadi kesalahan
-        client.destroy();
-        res.status(500).send('Failed to connect to server');
-    });
+    // client.connect({ host: env_host, port: env_port }, function () {
+    //     console.log('Connected to server');
+    //     client.write(postData);
+    //     setTimeout(function () { 
+    //         client.on('data', function (data) {
+    //             console.log("Read ", Math.random(), data);
+    //             client.write('\x06');
+    //             client.destroy();
+    //             console.log(`client.destroy() >> ${env_host}:${env_port} `);
+    //         });
+    //     }, 2000); 
+    //     res.status(200).send(rest);
+    // });
+    // client.on('timeout', () => {
+    //     console.error('Connection timeout');
+    //     client.destroy(); // Menutup socket jika timeout terjadi
+    //     res.status(500).send('Connection timeout');
+    //   }); 
+    // client.on('error', (err) => {
+    //     console.error('Connection error:', err.message);
+    //     // Menutup socket jika terjadi kesalahan
+    //     client.destroy();
+    //     res.status(500).send('Failed to connect to server');
+    // });
 
     // Menangani event 'close'
-    client.on('close', (hadError) => {
-        if (hadError) {
-            console.error('Connection closed due to an error');
-        } else {
-            console.log('Connection closed');
-        }
-        res.status(201).send(rest);
-    });
-   
+    // client.on('close', (hadError) => {
+    //     if (hadError) {
+    //         console.error('Connection closed due to an error');
+    //     } else {
+    //         console.log('Connection closed');
+    //     }
+    //     res.status(201).send(rest);
+    // });
+    res.status(201).send(rest);
 });
 
 
