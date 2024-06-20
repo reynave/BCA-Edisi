@@ -41,145 +41,15 @@ server.listen(3000, () => {
 function ecrBCA(){ 
      client.connect({ host: env_host, port: env_port }, function () {
         console.log(`BCA 01 - server on  ${env_host}:${env_port}`);
-    
-        let version = "\x02";
-        let transType = '01';  
-        let transAmount = "000000122500";
-        let otherAmount =  "000000000000";
-
-        let debitCard = bcaDummyCC;
-        let PAN = "4556330000000191   ";
-        let expireDate = "2503";
-
-        let cancelReason = "00";
-        let invoiceNumber = "000000";
-        let authCode = "      ";
-        let installmentFlag = " ";
-        let redeemFlag = " ";
-        let DCCFlag = "N";
-        let installmentPlan = "   ";
-        let InstallmentTenor = "  ";
-        let genericData = "            ";
-        let reffNumber = "            ";
-        let originalDate = "    ";
-        let BCAFiller = "                                                  ";
-       
-        let ercOther   = "N00000                                                                              ";
-        
-        let LRC = null; 
- 
-        const summaryLength = {
-            version         : [version,version.length],
-            transType       :[transType,transType.length],
-            transAmount     : [transAmount,transAmount.length],
-            otherAmount     : [otherAmount,otherAmount.length],
-            PAN             : [PAN,PAN.length],
-            expireDate      : [expireDate,expireDate.length],
-            cancelReason    : [cancelReason,cancelReason.length],
-            invoiceNumber   : [invoiceNumber,invoiceNumber.length],
-            authCode        : [authCode,authCode.length],
-            installmentFlag : [installmentFlag,installmentFlag.length],
-            redeemFlag      : [redeemFlag,redeemFlag.length],
-            DCCFlag         : [DCCFlag,DCCFlag.length],
-            installmentPlan : [installmentPlan,installmentPlan.length],
-            InstallmentTenor : [InstallmentTenor,InstallmentTenor.length],
-            genericData     : [genericData,genericData.length],
-            reffNumber      : [reffNumber,reffNumber.length],
-            originalDate    : [originalDate,originalDate.length],
-            BCAFiller       : [BCAFiller,BCAFiller.length], 
-        }
-
-        let totalLength = 0;
-        for (const [key, value] of Object.entries(summaryLength)) {
-            totalLength += value[1]; // Tambahkan panjang array (nilai kedua dalam array)
-        }
-        // const totalLength = Object.values(summaryLength).reduce((total, value) => total + value, 0);
-         //const totalLength = 150;
-
-        console.log(summaryLength, totalLength);
-
-
-        let MessageData = pad(totalLength,4)+
-            version+
-            transType+
-            transAmount+otherAmount+debitCard+ercOther+ 
-            ETX; 
-
-    
-        binArray.push(binToArry(hex2bin( pad(totalLength,4).slice(0, 2)) ) ); 
-        binArray.push(binToArry(hex2bin( pad(totalLength,4).slice(-2)) ) );  
-
-        binArray.push(binToArry(hex2bin( version )) ); 
-        console.log(binToArry(hex2bin( version )), hex2bin( version ),version )
-        // TYPE TRANS 
-        binArray.push(binToArry(hex2bin(textToHex(transType).slice(0, 2)) ) );  
-        binArray.push(binToArry(hex2bin(textToHex(transType).slice(-2)) ));    
      
-        msgToBinArr(MessageData); 
-
-        binArray.push(binToArry(hex2bin("03") ));   
-    
-        console.log( "binArray.length",binArray.length );
-
-        
-        LRC = binaryArrayToHex(xorOperation(binArray));
-        
-    
-
-        let postData = STX+"\x01"+"\x50"+
-            version+
-            transType+
-            transAmount+
-            otherAmount+
-            debitCard+
-            ercOther+ 
-            ETX+
-            LRC
-
-
-        //let postData = STX+MessageData+LRC;  
-        console.log(LRC, postData);
-
-        let date = new Date();
-        let year = date.getFullYear();
-        let month = String(date.getMonth() + 1).padStart(2, '0'); // getMonth() returns 0-11, so add 1
-        let day = String(date.getDate()).padStart(2, '0');
-        
-        let formattedDate = `${year}-${month}-${day}`;
-
-        let filePath = './tmp/log_'+formattedDate+'.txt';
-        // Cek apakah file sudah ada
-        if (fs.existsSync(filePath)) {
-            // File ada, tambahkan data
-            fs.appendFile(filePath, postData+"\n", (err) => {
-            if (err) {
-                console.error('Gagal menambahkan data ke file:', err);
-            } else {
-                console.log('Data berhasil ditambahkan!');
-            }
-            });
-        } else {
-            // File belum ada, buat file baru dan tulis data
-            fs.writeFile(filePath, postData+"\n", (err) => {
-            if (err) {
-                console.error('Gagal menulis data ke file baru:', err);
-            } else {
-                console.log('File baru berhasil dibuat dan data berhasil ditambahkan!');
-            }
-            });
-        }
-
-   //client.write(echoTestBCA);
-
-        client.write(postData);
-
+ 
         setTimeout(function () { 
-            client.on('data', function (data) {
-                console.log("Read ", Math.random(), data);
-                client.write('\x06');
-                client.destroy();
-                console.log(` \x06 send ACK client.destroy() >> ${env_host}:${env_port} `);
-            });
+           
+            console.log("ACK CLOSE ");
+            client.write('\x06');
+            client.destroy();
+            console.log(`client.destroy() >> ${env_host}:${env_port} `);
+         
         }, 2000); 
     }); 
 }
