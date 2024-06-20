@@ -5,7 +5,7 @@ const net = require('net');
 const app = express();
 const port = 3000;
 const env_port = 80;
-const env_host = '192.168.1.106';
+const env_host = '192.168.1.105';
 const { addLogs } = require('./model/logs');
 const utils = require('./model/utils');
 const dummyCC = true;
@@ -31,7 +31,8 @@ app.post('/debit', (req, res) => {
     let version = "\x02";
 
     let transType = '01';
-    let transAmount = "000000122500";
+    // let transAmount = "000000122500";
+    let transAmount = req.body['amount'].toString().padStart(10, '0') + '00';
     let otherAmount = "000000000000";
     /**
     * BCA REAL CC;
@@ -141,32 +142,36 @@ app.post('/debit', (req, res) => {
 
     client.connect({ host: req.body['ip'], port: env_port }, function () {
         console.log('Connected to server');
+        console.log('postData');
         client.write(postData);
-        console.log(`client.destroy() >> ${env_host}:${env_port} `);
+
         res.status(200).send(rest);
     });
 
     // Definisikan listener `data` untuk menerima respon
-    client.on('data', function(data) {
+    client.on('data', function (data) {
         console.log("Received data from EDC:", data.toString());
 
         // Kirim ACK (Acknowledge) jika diperlukan
         client.write('\x06');
 
         // Lakukan penanganan data respon di sini
-        console.log(data);
+        console.log(data, data.toString());
+
 
         // Jika selesai, Anda bisa menutup koneksi
         client.destroy();
+
         console.log(`Connection to ${env_host}:${env_port} will be closed.`);
     });
+
 
     // Mengirim response HTTP setelah transaksi selesai
     client.on('end', function () {
         console.log('Disconnected from server');
         const rest = {
             error: false,
-            note: 'Disconnected from server', 
+            note: 'Disconnected from server',
         }
         client.destroy();
         res.status(200).send(rest);
@@ -176,7 +181,7 @@ app.post('/debit', (req, res) => {
         console.error('Connection error: ', err.message);
         const rest = {
             error: true,
-            note:'Connection error: '+ err.message, 
+            note: 'Connection error: ' + err.message,
         }
         client.destroy();
         res.status(500).send(rest);
@@ -187,35 +192,72 @@ app.post('/debit', (req, res) => {
         console.error('Connection timeout');
         const rest = {
             error: true,
-            note:'Connection timeout', 
+            note: 'Connection timeout',
         }
         client.destroy(); // Menutup socket jika timeout terjadi
         res.status(500).send(rest);
-    }); 
+    });
 
-    // client.on('error', (err) => {
-    //     console.error('Connection error:', err.message);
-    //     // Menutup socket jika terjadi kesalahan
-    //     client.destroy();
-    //     res.status(500).send('Failed to connect to server');
-    // });
- 
-    // client.on('close', (hadError) => { 
-    //     console.log('Connection closed'); 
-    //    // client.destroy();
-    //     res.status(201).send(rest);
-    // });
-    //res.status(201).send(rest);
+
 });
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-app.get('/lan', (req, res) => {
-    console.log(req.query);
-    if (req.query) {
-        res.send(req.query);
-    } else {
-        res.status(404).send({ message: 'User not found' });
+
+app.get('/logs', async (req, res) => {
+    const client = new net.Socket();
+    client.connect({ host: env_host, port: env_port }, function () {
+        console.log(`BCA 01 - server on  ${env_host}:${env_port}`);
+        client.write("P010000001225000000000000004556330000000191   250300000000000000  N00000                                                                              04");
+
+    });
+    // Listener untuk menangkap data dari EDC
+    client.on('data', function (data) {
+        console.log('Received data from EDC:', data.toString());
+        client.write('\x06'); // Mengirim ACK kembali ke EDC
+
+        // Misalnya, lakukan pengecekan untuk kondisi transaksi yang diinginkan
+        if (data.toString().length > 50) {
+            // Jika transaksi disetujui, kirim respons JSON
+            const response = {
+                success: true,
+                message: 'Transaction approved',
+                data : data.toString(),
+            };
+            client.destroy(); // Hentikan koneksi setelah selesai
+            res.json(response); // Kirim respons JSON ke client
+        }
+    });
+
+    // Handler untuk kesalahan koneksi
+    client.on('error', function (err) {
+        console.error('Connection error:', err.message);
+        const response = {
+            success: false,
+            message: 'Connection error'
+        };
+        res.status(500).json(response); // Kirim respons error JSON ke client
+        client.destroy(); // Hentikan koneksi setelah selesai
+    });
+
+    // Handler untuk penutupan koneksi
+    client.on('close', function () {
+        console.log('Connection closed');
+    });
+
+    // Tunggu selama 10 detik untuk respons dari EDC
+    await sleep(20000); // 10 detik timeout
+
+    // Jika tidak ada respons dari EDC dalam 10 detik, kirim timeout response
+    if (!res.headersSent) {
+        const response = {
+            success: false,
+            message: 'Timeout waiting for response'
+        };
+        res.status(500).json(response); // Kirim respons timeout JSON ke client
+        client.destroy(); // Hentikan koneksi setelah selesai
     }
+
 });
 
 
