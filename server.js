@@ -1,36 +1,39 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const fs = require('fs');
+const bodyParser = require('body-parser'); 
 const net = require('net');
 const app = express();
-const port = 3000;
+const port = 9400;
 const env_port = 80;
-const env_host = '192.168.1.105';
-const { addLogs } = require('./model/logs');
+const { addLogs, respLogs } = require('./model/logs');
 const utils = require('./model/utils');
 const dummyCC = true;
-
-
+ 
 let echoTestBCA = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
 
 
 let STX = "\x02";
 let ETX = "\x03";
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 app.use(bodyParser.json());
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-// Create - Menambahkan pengguna baru
-app.post('/debit', (req, res) => {
-    const client = new net.Socket();
+ 
+app.post('/payment', async (req, res) => {
+
     const binArray = [];
     const bin = [];
-    let version = "\x02";
+    let version = "\x02"; 
+    let transType = '01'; 
 
-    let transType = '01';
+    if(req.body['transType'] != undefined){
+        transType = req.body['transType']; 
+    }
+    console.log(transType);
+
     // let transAmount = "000000122500";
     let transAmount = req.body['amount'].toString().padStart(10, '0') + '00';
     let otherAmount = "000000000000";
@@ -42,8 +45,8 @@ app.post('/debit', (req, res) => {
 
     if (dummyCC == true) {
         /**
-           * BCA Dummy CC;
-           */
+         * BCA Dummy CC;
+         */
         PAN = "4556330000000191   ";
         expireDate = "2503";
     }
@@ -104,7 +107,7 @@ app.post('/debit', (req, res) => {
     binArray.push([0, 0, 0, 0, 0, 0, 1, 0]);
 
     //binArray.push(binToArry(hex2bin( version )) ); 
-    console.log(binArray);
+    
     // TYPE TRANS 
     binArray.push(utils.binToArry(utils.hex2bin(utils.textToHex(transType).slice(0, 2))));
     binArray.push(utils.binToArry(utils.hex2bin(utils.textToHex(transType).slice(-2))));
@@ -128,7 +131,7 @@ app.post('/debit', (req, res) => {
         MessageData +
         ETX +
         LRC;
-    console.log()
+   
     addLogs(postData);
 
     const rest = {
@@ -138,78 +141,89 @@ app.post('/debit', (req, res) => {
         postData: postData,
     }
     console.log(summaryLength);
+
     // client.setTimeout(5000); // Timeout setiap 5 detik
-
-    client.connect({ host: req.body['ip'], port: env_port }, function () {
-        console.log('Connected to server');
-        console.log('postData');
-        client.write(postData);
-
-        res.status(200).send(rest);
+    const client = new net.Socket();
+    client.connect({ host: req.body['ip'], port: env_port }, function () { 
+        console.log(`BCA 01 - server on  ${req.body['ip']}:${env_port}`); 
+        client.write(postData); 
     });
-
-    // Definisikan listener `data` untuk menerima respon
+    // Listener untuk menangkap data dari EDC
     client.on('data', function (data) {
-        console.log("Received data from EDC:", data.toString());
+        console.log('Received data from EDC:', data.toString());
+        client.write('\x06'); // Mengirim ACK kembali ke EDC
 
-        // Kirim ACK (Acknowledge) jika diperlukan
-        client.write('\x06');
+        // Misalnya, lakukan pengecekan untuk kondisi transaksi yang diinginkan
+        if (data.toString().length > 50) {
+            // Jika transaksi disetujui, kirim respons JSON
 
-        // Lakukan penanganan data respon di sini
-        console.log(data, data.toString());
+            let data1 = data.toString(); 
+            let n= 3; 
+            const resp = {   
+                'length' : data1.length, 
+                'TransType':data1.slice(n+1,n+3),
+                'TransAmount':data1.slice(n+3,n+3+12),
+                'PAN':data1.slice(n+25,n+25+18),
+                'RespCode':data1.slice(n+50,n+50+2), 
+                'RRN':data1.slice(n+52,n+52+12),
+                'ApprovalCode':data1.slice(n+64,n+64+6), 
+                'DateTime':data1.slice(n+70,n+70+14),
+                'MerchantId':data1.slice(n+84,n+84+15), 
+                'TerminalId':data1.slice(n+99,n+99+8), 
+                'OfflineFlag':data1.slice(n+107,n+107+1),  
+            }
+ 
 
-
-        // Jika selesai, Anda bisa menutup koneksi
-        client.destroy();
-
-        console.log(`Connection to ${env_host}:${env_port} will be closed.`);
-    });
-
-
-    // Mengirim response HTTP setelah transaksi selesai
-    client.on('end', function () {
-        console.log('Disconnected from server');
-        const rest = {
-            error: false,
-            note: 'Disconnected from server',
+            const response = {
+                success: true,
+                message: 'Transaction approved',
+                responseMessage: data.toString(),
+                resp : resp
+            };
+            respLogs(data.toString());
+            client.destroy(); // Hentikan koneksi setelah selesai
+            res.json(response); // Kirim respons JSON ke client
         }
-        client.destroy();
-        res.status(200).send(rest);
     });
 
+    // Handler untuk kesalahan koneksi
     client.on('error', function (err) {
-        console.error('Connection error: ', err.message);
-        const rest = {
-            error: true,
-            note: 'Connection error: ' + err.message,
-        }
-        client.destroy();
-        res.status(500).send(rest);
+        console.error('Connection error:', err.message);
+        const response = {
+            success: false,
+            message: 'Connection error'
+        };
+        res.status(500).json(response); // Kirim respons error JSON ke client
+        client.destroy(); // Hentikan koneksi setelah selesai
     });
 
-
-    client.on('timeout', () => {
-        console.error('Connection timeout');
-        const rest = {
-            error: true,
-            note: 'Connection timeout',
-        }
-        client.destroy(); // Menutup socket jika timeout terjadi
-        res.status(500).send(rest);
+    // Handler untuk penutupan koneksi
+    client.on('close', function () {
+        console.log('Connection closed');
     });
+
+    // Tunggu selama 10 detik untuk respons dari EDC
+    await sleep(60000); // 10 detik timeout
+
+    // Jika tidak ada respons dari EDC dalam 10 detik, kirim timeout response
+    if (!res.headersSent) {
+        const response = {
+            success: false,
+            message: 'Timeout waiting for response'
+        };
+        res.status(500).json(response); // Kirim respons timeout JSON ke client
+        client.destroy(); // Hentikan koneksi setelah selesai
+    }
 
 
 });
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-
-app.get('/logs', async (req, res) => {
+app.get('/echoTest', async (req, res) => {
     const client = new net.Socket();
-    client.connect({ host: env_host, port: env_port }, function () {
-        console.log(`BCA 01 - server on  ${env_host}:${env_port}`);
-        client.write("P010000001225000000000000004556330000000191   250300000000000000  N00000                                                                              04");
-
+    client.connect({ host: req.body['ip'], port: env_port }, function () {
+        console.log(`BCA 17 - server on  ${req.body['ip']}:${env_port}`);
+        client.write(echoTestBCA);
     });
     // Listener untuk menangkap data dari EDC
     client.on('data', function (data) {
@@ -221,8 +235,8 @@ app.get('/logs', async (req, res) => {
             // Jika transaksi disetujui, kirim respons JSON
             const response = {
                 success: true,
-                message: 'Transaction approved',
-                data : data.toString(),
+                message: 'Echo Test success',
+                data: data.toString(),
             };
             client.destroy(); // Hentikan koneksi setelah selesai
             res.json(response); // Kirim respons JSON ke client
@@ -246,7 +260,7 @@ app.get('/logs', async (req, res) => {
     });
 
     // Tunggu selama 10 detik untuk respons dari EDC
-    await sleep(20000); // 10 detik timeout
+    await sleep(60000); // 10 detik timeout
 
     // Jika tidak ada respons dari EDC dalam 10 detik, kirim timeout response
     if (!res.headersSent) {
@@ -259,8 +273,7 @@ app.get('/logs', async (req, res) => {
     }
 
 });
-
-
+ 
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
 });
