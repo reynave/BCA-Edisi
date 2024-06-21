@@ -17,7 +17,13 @@ const resp = {
     'OfflineFlag':data1.slice(n+107,n+107+1),  
 }
  
+let buffer = Buffer.from([0x02]);
 
-console.log('resp',resp); 
+// Ambil nilai biner dari buffer[0] dan ubah menjadi 8 digit biner
+let binaryString = buffer[0].toString(2).padStart(8, '0');
+
+console.log(binaryString); // Output: 00000010
+
+//console.log('resp',resp); 
 
  

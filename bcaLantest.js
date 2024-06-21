@@ -10,6 +10,8 @@ const env_host = '192.168.1.105';
 // SETING IP , Function 2, pass 3226
 
 let echoTestBCA = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
+let echoTestBCA2 = "P010000002000000000000000004556330000000191   250300000000000000  N00000                                                                              0D";
+
 // DOC https://github.com/nodejs/node/issues/2237
 const bin = [];
 let STX = "\x02";
@@ -32,7 +34,7 @@ app.get('/', (req, res) => {
 
 });
 
-server.listen(3000, () => {
+server.listen(9402, () => {
 
     console.log('BCA LAN DEV, listening on *:3000');
     ecrBCA();
@@ -42,8 +44,9 @@ async function ecrBCA() {
 
 
     let version = "\x02";
+
     let transType = '01';
-    let transAmount = "000000122500";
+    let transAmount = "000000536000";
     let otherAmount = "000000000000";
 
     let debitCard = bcaDummyCC;
@@ -93,7 +96,7 @@ async function ecrBCA() {
         totalLength += value[1]; // Tambahkan panjang array (nilai kedua dalam array)
     }
     // const totalLength = Object.values(summaryLength).reduce((total, value) => total + value, 0);
-    //const totalLength = 150;
+    // const totalLength = 150;
 
     console.log(summaryLength, totalLength);
 
@@ -108,8 +111,11 @@ async function ecrBCA() {
     binArray.push(binToArry(hex2bin(pad(totalLength, 4).slice(0, 2))));
     binArray.push(binToArry(hex2bin(pad(totalLength, 4).slice(-2))));
 
+    //binArray.push(binToArry(hex2bin(version)));
     binArray.push(binToArry(hex2bin(version)));
-    console.log(binToArry(hex2bin(version)), hex2bin(version), version)
+    
+    console.log(binArray)
+    //console.log(binToArry(hex2bin(version)), hex2bin(version), version)
     // TYPE TRANS 
     binArray.push(binToArry(hex2bin(textToHex(transType).slice(0, 2))));
     binArray.push(binToArry(hex2bin(textToHex(transType).slice(-2))));
@@ -117,8 +123,7 @@ async function ecrBCA() {
     msgToBinArr(MessageData);
 
     binArray.push(binToArry(hex2bin("03")));
-
-    console.log("binArray.length", binArray.length);
+    //binArray.push(binToArry('00000011'));
 
 
     LRC = binaryArrayToHex(xorOperation(binArray));
@@ -168,34 +173,20 @@ async function ecrBCA() {
         });
     }
 
-    //client.write(echoTestBCA);
     client.connect({ host: env_host, port: env_port }, function () {
         console.log(`BCA 01 - server on  ${env_host}:${env_port}`);
         client.write(postData);
     });
 
-    // setTimeout(function () {
-    //     client.on('data', function (data) {
-    //         console.log("Read ", Math.random(), data);
-    //         client.write('\x06');
-    //         client.destroy();
-    //         console.log(` \x06 send ACK client.destroy() >> ${env_host}:${env_port} `);
-    //     });
-    // }, 2000);
 
     for (let i = 0; i < 100; i++) {
         console.log(i);
-      //  if (i > 20) {
+        client.on('data', function (data) {
+            console.log(i, " Read ", data, 'ACK');
+            client.write('\x06');
+        });
 
-
-            client.on('data', function (data) {
-                console.log(i," Read ", Math.random(), data);
-                client.write('\x06');
-             //   client.destroy();
-                //     console.log(` \x06 send ACK client.destroy() >> ${env_host}:${env_port} `);
-            });
-       // }
-        await sleep(400);
+        await sleep(500);
     }
 }
 function sleep(ms) {
