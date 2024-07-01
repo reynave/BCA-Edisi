@@ -55,10 +55,7 @@ app.post('/payment', async (req, res) => {
         PAN = "4556330000000191   ";
         expireDate = "2503";
     }
-
-
-
-
+  
     let cancelReason = "00";
     let invoiceNumber = "000000";
     let authCode = "000000";
@@ -68,7 +65,7 @@ app.post('/payment', async (req, res) => {
     let installmentPlan = "000";
     let InstallmentTenor = "00";
     let genericData = "            ";
-    let reffNumber = "            ";
+    let reffNumber = req.body['RNN'] ? req.body['RNN'] : "            ";
     let originalDate = "    ";
     let BCAFiller = "                                                  ";
 
