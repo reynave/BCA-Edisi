@@ -38,7 +38,9 @@ app.post('/payment', async (req, res) => {
         transType = req.body['transType'];
     }
     console.log(transType);
-
+    if( !req.body['amount'] ){
+        req.body['amount'] = 0;
+    }
     // let transAmount = "000000122500";
     let transAmount = req.body['amount'].toString().padStart(10, '0') + '00';
     let otherAmount = "000000000000";
