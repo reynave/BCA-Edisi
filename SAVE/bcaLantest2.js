@@ -8,8 +8,8 @@ const net = require('net');
 const port = 9400;
 const env_port = 80;
 const env_host = '192.168.1.105';
-const { addLogs, respLogs } = require('./model/logs');
-const utils = require('./model/utils');
+const { addLogs, respLogs } = require('../model/logs');
+const utils = require('../model/utils');
 const dummyCC = true;
 
 let echoTestBCA = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
