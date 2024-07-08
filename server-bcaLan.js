@@ -168,17 +168,19 @@ app.post('/payment', async (req, res) => {
         body: req.body,
         postData: postData,
     }
-    console.log(summaryLength);
+    //console.log(summaryLength);
 
     // client.setTimeout(5000); // Timeout setiap 5 detik
     const client = new net.Socket();
     client.connect({ host: req.body['ip'], port: env_port }, function () {
-        console.log(`BCA 01 - server on  ${req.body['ip']}:${env_port}`);
+        let date = new Date();
+        console.log(`BCA server on  ${req.body['ip']}:${env_port} ${date} `  );
+        console.log('Request Message : '+postData);
         client.write(postData);
     });
     // Listener untuk menangkap data dari EDC
     client.on('data', function (data) {
-        console.log('Received data from EDC:', data.toString());
+        console.log('Response Message EDC:', data.toString());
         client.write('\x06'); // Mengirim ACK kembali ke EDC
 
         // Misalnya, lakukan pengecekan untuk kondisi transaksi yang diinginkan
@@ -200,11 +202,17 @@ app.post('/payment', async (req, res) => {
     client.on('error', function (err) {
         console.error('Connection error:', err.message);
         const response = {
+            resp: {
+                RespCode : 'S2',
+                response : "Bad request, please try again!",
+            },
             success: false,
             message: 'Connection error'
         };
-        res.status(500).json(response); // Kirim respons error JSON ke client
-        client.destroy(); // Hentikan koneksi setelah selesai
+        res.json(response); 
+       // res.status(500).json(response); // Kirim respons error JSON ke client
+        client.destroy();  
+       
     });
 
     // Handler untuk penutupan koneksi
@@ -219,10 +227,16 @@ app.post('/payment', async (req, res) => {
     if (!res.headersSent) {
         const response = {
             success: false,
+            resp: {
+                RespCode : 'S2',
+                response : "Bad request, please try again!",
+            },
             message: 'Timeout waiting for response'
         };
-        res.status(500).json(response); // Kirim respons timeout JSON ke client
-        client.destroy(); // Hentikan koneksi setelah selesai
+         res.json(response);  
+       // res.status(500).json(response); // Kirim respons timeout JSON ke client
+        client.destroy();  
+       
     }
 
 
