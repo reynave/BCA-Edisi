@@ -42,7 +42,10 @@ app.post('/payment', async (req, res) => {
         req.body['amount'] = 0;
     }
     // let transAmount = "000000122500";
-    let transAmount = req.body['amount'].toString().padStart(10, '0') + '00';
+    let transAmount = req.body['amount'].toString().padStart(10, '0') + '00'; 
+    if(req.body['transType'] =='32'){
+        transAmount = "            ";
+    } 
     let otherAmount = "000000000000";
     /**
     * BCA REAL CC;
