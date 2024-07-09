@@ -160,8 +160,9 @@ app.post('/payment', async (req, res) => {
         MessageData +
         ETX +
         LRC;
-
-    addLogs(strHex);
+    let date = new Date() +" "+ req.body['ip'];
+    addLogs(date);
+    addLogs(strHex+ LRC);
     addLogs(postDataNote);
     addLogs("");
 
@@ -176,9 +177,16 @@ app.post('/payment', async (req, res) => {
     // client.setTimeout(5000); // Timeout setiap 5 detik
     const client = new net.Socket();
     client.connect({ host: req.body['ip'], port: env_port }, function () {
-        let date = new Date();
+       
         console.log(`BCA server on  ${req.body['ip']}:${env_port} ${date} `  );
-        console.log('Request Message : '+postData);
+        console.log('Request : '+postDataNote);
+        console.log('Request HEX : '+strHex+ LRC);
+        
+        respLogs("");
+        respLogs(date);
+        respLogs('Request :  '+postDataNote);
+        respLogs('Request HEX:  '+ strHex+ LRC);
+        
         client.write(postData);
     });
     // Listener untuk menangkap data dari EDC
@@ -195,7 +203,9 @@ app.post('/payment', async (req, res) => {
                 responseMessage: data.toString(),
                 resp: utils.strToArray(data, 3),
             };
-            respLogs(data.toString());
+            respLogs('Response : '+data.toString());
+           
+            
             client.destroy(); // Hentikan koneksi setelah selesai
             res.json(response); // Kirim respons JSON ke client
         }
@@ -212,6 +222,10 @@ app.post('/payment', async (req, res) => {
             success: false,
             message: 'Connection error'
         };
+        respLogs("");
+        respLogs(date);
+        respLogs('Response Error: Bad request, please try again!');
+        
         res.json(response); 
        // res.status(500).json(response); // Kirim respons error JSON ke client
         client.destroy();  
@@ -236,6 +250,10 @@ app.post('/payment', async (req, res) => {
             },
             message: 'Timeout waiting for response'
         };
+        respLogs("");
+        respLogs(date);
+        respLogs('Response Timeout: Bad request, please try again!');
+     
          res.json(response);  
        // res.status(500).json(response); // Kirim respons timeout JSON ke client
         client.destroy();  
