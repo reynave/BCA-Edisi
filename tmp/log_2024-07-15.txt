@@ -1,0 +1,32 @@
+
+Mon Jul 15 2024 14:45:53 GMT+0700 (Indochina Time) undefined
+[object Object]
+
+Mon Jul 15 2024 14:47:04 GMT+0700 (Indochina Time) undefined
+{"success":true,"message":"Echo Test success","resp":{"length":205,"TransType":"17","TransAmount":"000000000000","PAN":"00","RespCode":"","RRN":"","ApprovalCode":"","DateTime":"","MerchantId":"","TerminalId":"","OfflineFlag":"Y","response":"Null"}}
+
+Mon Jul 15 2024 14:47:34 GMT+0700 (Indochina Time) 192.168.1.100
+{"success":true,"message":"Echo Test success","resp":{"length":205,"TransType":"17","TransAmount":"000000000000","PAN":"00","RespCode":"","RRN":"","ApprovalCode":"","DateTime":"","MerchantId":"","TerminalId":"","OfflineFlag":"Y","response":"Null"}}
+Mon Jul 15 2024 14:47:45 GMT+0700 (Indochina Time) 192.168.1.100
+
+{"success":true,"message":"Echo Test success","resp":{"length":205,"TransType":"17","TransAmount":"000000000000","PAN":"00","RespCode":"","RRN":"","ApprovalCode":"","DateTime":"","MerchantId":"","TerminalId":"","OfflineFlag":"Y","response":"Null"}}
+
+Mon Jul 15 2024 14:47:50 GMT+0700 (Indochina Time) 192.168.1.100
+{"success":true,"message":"Echo Test success","resp":{"length":205,"TransType":"17","TransAmount":"000000000000","PAN":"00","RespCode":"","RRN":"","ApprovalCode":"","DateTime":"","MerchantId":"","TerminalId":"","OfflineFlag":"Y","response":"Null"}}
+
+Mon Jul 15 2024 14:47:57 GMT+0700 (Indochina Time) 192.168.1.100
+{"success":true,"message":"Echo Test success","resp":{"length":205,"TransType":"17","TransAmount":"000000000000","PAN":"00","RespCode":"","RRN":"","ApprovalCode":"","DateTime":"","MerchantId":"","TerminalId":"","OfflineFlag":"Y","response":"Null"}}
+
+Mon Jul 15 2024 14:48:01 GMT+0700 (Indochina Time) 192.168.1.102
+{"success":false,"message":"Connection error"}
+
+Mon Jul 15 2024 14:50:33 GMT+0700 (Indochina Time) 192.168.1.102
+{"success":false,"message":"Connection error"}
+Mon Jul 15 2024 14:50:59 GMT+0700 (Indochina Time) 192.168.1.100
+
+echoTestBCA P17000000000000000000000000                       00000000000000  N00000                                                                              
+{"success":true,"message":"Echo Test success","resp":{"length":205,"TransType":"17","TransAmount":"000000000000","PAN":"00","RespCode":"","RRN":"","ApprovalCode":"","DateTime":"","MerchantId":"","TerminalId":"","OfflineFlag":"Y","response":"Null"}}
+
+Mon Jul 15 2024 14:51:09 GMT+0700 (Indochina Time) 192.168.1.100
+echoTestBCA P17000000000000000000000000                       00000000000000  N00000                                                                              
+{"success":true,"message":"Echo Test success","resp":{"length":205,"TransType":"17","TransAmount":"000000000000","PAN":"00","RespCode":"","RRN":"","ApprovalCode":"","DateTime":"","MerchantId":"","TerminalId":"","OfflineFlag":"Y","response":"Null"}}

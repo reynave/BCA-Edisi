@@ -1,28 +1,28 @@
+
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-
 const bodyParser = require('body-parser');
 const net = require('net');
 const app = express();
-const port = 9400;
-const env_port = 80;
+const port = process.env.PORT;
+const env_port = process.env.ENV_PORT;
 const { addLogs, respLogs } = require('./model/logs');
 const utils = require('./model/utils');
-const dummyCC = true;
+const dummyCC = process.env.DUMMYCC;
 
-let echoTestBCA = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
-
+let echoTestBCA =  process.env.ECHOTESTBCA;
 
 let STX = "\x02";
 let ETX = "\x03";
-
+ 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 app.use(bodyParser.json());
 // Middleware untuk mengizinkan CORS
 app.use(cors());
 
-app.get('/', (req, res) => {
+app.get('/', (req, res) => { 
     res.sendFile(__dirname + '/index.html');
 });
 
@@ -53,7 +53,7 @@ app.post('/payment', async (req, res) => {
     let PAN = "                   ";
     let expireDate = "    ";
 
-    if (dummyCC == true) {
+    if (dummyCC == 1) {
         /**
          * BCA Dummy CC;
          */
@@ -161,10 +161,8 @@ app.post('/payment', async (req, res) => {
         ETX +
         LRC;
     let date = new Date() +" "+ req.body['ip'];
-    addLogs(date);
-    addLogs(strHex+ LRC);
-    addLogs(postDataNote);
     addLogs("");
+    addLogs(date);
 
     const rest = {
         error: false,
@@ -180,12 +178,9 @@ app.post('/payment', async (req, res) => {
        
         console.log(`BCA server on  ${req.body['ip']}:${env_port} ${date} `  );
         console.log('Request : '+postDataNote);
-        console.log('Request HEX : '+strHex+ LRC);
-        
-        respLogs("");
-        respLogs(date);
-        respLogs('Request :  '+postDataNote);
-        respLogs('Request HEX:  '+ strHex+ LRC);
+        console.log('Request HEX : '+strHex+ LRC);  
+        addLogs('Request :  '+postDataNote);
+        addLogs('Request HEX:  '+ strHex+ LRC);
         
         client.write(postData);
     });
@@ -203,8 +198,8 @@ app.post('/payment', async (req, res) => {
                 responseMessage: data.toString(),
                 resp: utils.strToArray(data, 3),
             };
-            respLogs('Response : '+data.toString());
-           
+            addLogs('Response : '+data.toString());
+            respLogs(data.toString());
             
             client.destroy(); // Hentikan koneksi setelah selesai
             res.json(response); // Kirim respons JSON ke client
@@ -222,10 +217,12 @@ app.post('/payment', async (req, res) => {
             success: false,
             message: 'Connection error'
         };
-        respLogs("");
-        respLogs(date);
-        respLogs('Response Error: Bad request, please try again!');
-        
+        addLogs("");
+        addLogs(date);
+        addLogs('Response Error: Bad request, please try again!');
+
+        respLogs('Response Error: Bad request '+req.body['ip']);
+
         res.json(response); 
        // res.status(500).json(response); // Kirim respons error JSON ke client
         client.destroy();  
@@ -250,10 +247,12 @@ app.post('/payment', async (req, res) => {
             },
             message: 'Timeout waiting for response'
         };
-        respLogs("");
-        respLogs(date);
-        respLogs('Response Timeout: Bad request, please try again!');
+        addLogs("");
+        addLogs(date);
+        addLogs('Response Timeout: Bad request, please try again!');
      
+        respLogs('Response Error: Bad request '+req.body['ip']);
+
          res.json(response);  
        // res.status(500).json(response); // Kirim respons timeout JSON ke client
         client.destroy();  
@@ -267,9 +266,13 @@ app.post('/payment', async (req, res) => {
 app.get('/echoTest', async (req, res) => {
     const client = new net.Socket();
     const ip = req.query.ip;
+    let date = new Date() +" "+ ip;
+    addLogs("");
+    addLogs(date);
 
     client.connect({ host: ip, port: env_port }, function () {
         console.log(`BCA 17 - server on  ${ip}:${env_port}`);
+        addLogs("echoTestBCA "+echoTestBCA);  
         client.write(echoTestBCA);
     });
     // Listener untuk menangkap data dari EDC
@@ -286,6 +289,7 @@ app.get('/echoTest', async (req, res) => {
                 message: 'Echo Test success',
                 resp: utils.strToArray(data, 3),
             };
+            addLogs(JSON.stringify(response));
             client.destroy(); // Hentikan koneksi setelah selesai
             res.json(response); // Kirim respons JSON ke client
         }
@@ -298,6 +302,7 @@ app.get('/echoTest', async (req, res) => {
             success: false,
             message: 'Connection error'
         };
+        addLogs(JSON.stringify(response));
         res.status(500).json(response); // Kirim respons error JSON ke client
         client.destroy(); // Hentikan koneksi setelah selesai
     });
@@ -316,6 +321,7 @@ app.get('/echoTest', async (req, res) => {
             success: false,
             message: 'Timeout waiting for response'
         };
+        addLogs(JSON.stringify(response));
         res.status(500).json(response); // Kirim respons timeout JSON ke client
         client.destroy(); // Hentikan koneksi setelah selesai
     }
