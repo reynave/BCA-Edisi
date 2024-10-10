@@ -58,7 +58,7 @@ app.post('/payment', async (req, res) => {
          * BCA Dummy CC;
          */
         PAN = "4556330000000191   ";
-        expireDate = "2503";
+        https://github.com/        expireDate = "2803";
     }
   
     let cancelReason = "00";
