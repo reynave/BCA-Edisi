@@ -7,8 +7,7 @@ const bodyParser = require('body-parser');
 const { SerialPort, ReadlineParser } = require('serialport');
 
 const app = express();
-const port = process.env.PORT2;
-const env_port = process.env.ENV_PORT;
+const PORT = process.env.PORT2; 
 const { addLogs, respLogs } = require('./model/logs');
 const utils = require('./model/utils');
 const dummyCC = process.env.DUMMYCC;
@@ -31,11 +30,14 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 app.use(bodyParser.json());
 // Middleware untuk mengizinkan CORS
 app.use(cors());
-
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+app.get('/', (req, res) => { 
+    const response = {
+        req: req.query,
+        message: 'Echo response',
+        timestamp: new Date().toISOString()
+    };
+    res.status(200).json(response); 
 });
-
 
 app.get('/checkCom', async (req, res) => {
     try {
@@ -111,10 +113,10 @@ app.get('/echoTest', async (req, res) => {
             });
 
             responseSent = true;
-            res.status(200).json({
+            res.status(200).json({  
                 success: true,
-                message: 'Data received successfully',
-                data: sendBack,
+                message: 'Echo Test success',
+                resp: utils.strToArray(resp, 3),
             });
 
             port.close((err) => {
@@ -166,215 +168,6 @@ app.get('/echoTest', async (req, res) => {
         }
     }, 10 * 1000);
 
-
-
-});
-
-
-
-app.post('/payment', async (req, res) => {
-
-    const comPort = req.body['port']; // Ambil port dari query parameter
-
-    if (!comPort) {
-        return res.status(400).json({
-            success: false,
-            message: 'COM port is required. Please provide ?port=COM6 or equivalent.',
-        });
-    }
-
-    let transType = req.body['transType'];
-    let transAmount = req.body['amount'].toString().padStart(10, '0') + '00';
-    if (req.body['transType'] == '32') {
-        transAmount = "            ";
-    }
-    let postData = ecrData(transType, transAmount, req.body['RNN']);
-    console.log('postData : ',postData, transType, transAmount, req.body['RNN']);
- 
-
-    let port;
-    port = new SerialPort({
-        path: comPort, // Path dinamis dari query params
-        baudRate: 9600,
-        autoOpen: false,
-    });
-
-    // Membaca data respons dari perangkat
-    let receivedData = '';
-    let resp = '';
-    // Baca data secara manual tanpa ReadlineParser
-    port.on('data', (chunk) => {
-        receivedData += chunk.toString();  // Konversi buffer ke string
-        console.log('Received chunk:', chunk.toString());
-        resp = chunk.toString();
-
-        const sendBack = {
-            resp: resp,
-            strToArray: utils.strToArray(resp, 3),
-        };
-        console.log(sendBack);
-        
-        
-        if (sendBack.strToArray.RespCode != '') {
-            console.log('Full message received:', receivedData.trim());
-            receivedData = '';  // Reset buffer
-
-            port.write('\x06', function (err) {
-                if (err) throw err;
-                console.log("done, send ACK");
-            });
-
-            responseSent = true;
-            clearTimeout(myTimeout);
-            res.status(200).json({
-                success: true,
-                message: 'Data received successfully',
-                data: sendBack,
-            });
-
-            port.close((err) => {
-                if (err) console.error('Failed to close port:', err.message);
-                else console.log('Port closed.');
-            });
-        }
-    });
-
-
-    // Pastikan port terbuka sebelum mengirim dan menerima data
-    port.open((err) => {
-        if (err) {
-            console.error('Failed to open port:', err.message);
-            return res.status(500).json({ success: false, message: 'Failed to open port', error: err.message });
-        }
-        console.log('Port opened.');
-        port.write(postData, (err) => {
-            if (err) {
-                console.error('Failed to send data:', err.message);
-                port.close(); // Pastikan port ditutup saat gagal
-                responseSent = true;
-                return res.status(500).json({
-                    success: false,
-                    message: 'Failed to send data',
-                    error: err.message
-                });
-            }
-            console.log(`Data sent: ${postData}`);
-        });
-    });
-
-
-
-    const myTimeout = setTimeout(() => {
-        console.log(responseSent);
-        if (!responseSent) {
-            responseSent = true; // Tanda
-            res.status(500).json({
-                success: false,
-                message: 'Timeout: No response from device',
-            });
-
-            // Tutup port jika timeout terjadi
-            port.close((err) => {
-                if (err) console.error('Failed to close port:', err.message);
-                else console.log('Port closed after timeout.');
-            });
-        }
-    }, 60 * 1000);
-
-
-
-
-});
-
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
-
-
-
-
-
-
-app.post('/payment_1', async (req, res) => {
-
-    const comPort = req.body['port']; // Ambil port dari query parameter
-
-    if (!comPort) {
-        return res.status(400).json({
-            success: false,
-            message: 'COM port is required. Please provide ?port=COM6 or equivalent.',
-        });
-    }
-    let port;
-
-
-
-    let transType = req.body['transType'];
-    let transAmount = req.body['amount'].toString().padStart(10, '0') + '00';
-    if (req.body['transType'] == '32') {
-        transAmount = "            ";
-    }
-    let postData = ecrData(transType, transAmount, req.body['RNN']);
-    console.log(postData);
-
-
-    port = new SerialPort({
-        path: comPort, // Path dinamis dari query params
-        baudRate: 9600,
-        autoOpen: false,
-    });
-
-    port.open(function (res) {
-        if (res) {
-            console.log(res.name, res.message);
-        } else {
-            console.log(comPort, 'Open');
-        }
-
-        port.write(postData, function (err) {
-            if (err) throw err;
-        });
-
-        refreshIntervalId = setInterval(function () {
-            i++;
-            let resp = port.read()?.toString('hex') || '';
-            console.log(i, resp);
-            if (resp) {
-                port.write('\x06', function (err) {
-                    if (err) throw err;
-                });
-
-                const sendBack = {
-                    i: i,
-                    hex: resp,
-                    ascii: respString,
-                    respCode: respString.slice(53, 55),
-                }
-                console.log(i, sendBack, "Port write done");
-
-                if (sendBack.RespCode == '00') {
-                    clearInterval(refreshIntervalId);
-                    port.close();
-                    console.log("Com Close!");
-                }
-
-                if (sendBack.RespCode == 'P3') {
-                    clearInterval(refreshIntervalId);
-                    port.close();
-                    console.log("User press Cancel on EDC, Com Close!");
-                }
-            }
-            if (i > 500) {
-                clearInterval(refreshIntervalId);
-                port.close();
-            }
-
-        }, 250);
-
-    });
 
 
 });
@@ -438,29 +231,25 @@ app.get('/readData', async (req, res) => {
 
 });
 
+app.post('/payment', async (req, res) => {
 
-app.post('/payment2', async (req, res) => {
+    const comPort = req.body['port']; // Ambil port dari query parameter
 
-    const comPort = req.body['port']; // Ambil port dari query parameter 
     if (!comPort) {
         return res.status(400).json({
             success: false,
             message: 'COM port is required. Please provide ?port=COM6 or equivalent.',
         });
     }
-    if (req.body['transType'] != undefined) {
-        transType = req.body['transType'];
-    }
-    if (!req.body['amount']) {
-        req.body['amount'] = 0;
-    }
+
+    let transType = req.body['transType'];
     let transAmount = req.body['amount'].toString().padStart(10, '0') + '00';
     if (req.body['transType'] == '32') {
         transAmount = "            ";
     }
-    let postData = ecrData(transType, transAmount, req.body['RNN']);
-
-    console.log(postData);
+    let postData = utils.ecrData(transType, transAmount, req.body['RNN']);
+    console.log('postData : ',postData, transType, transAmount, req.body['RNN']);
+ 
 
     let port;
     port = new SerialPort({
@@ -469,184 +258,113 @@ app.post('/payment2', async (req, res) => {
         autoOpen: false,
     });
 
-    const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+    // Membaca data respons dari perangkat
+    let receivedData = '';
+    let resp = '';
+    // Baca data secara manual tanpa ReadlineParser
+    port.on('data', (data) => {
+        receivedData += data.toString();  // Konversi buffer ke string
+        console.log('Received data :', data.toString());
+        responseMessage = data.toString();
 
-
-    port.open((err) => {
-        if (err) return reject(err); // Error saat membuka port
-        console.log(`Port ${comPort} OPENED.`);
-        // Menulis data ke port serial
-        port.write(postData, (err) => {
-            if (err) {
-                console.error('Error saat menulis ke port:', err.message);
-                return res.status(500).json({
-                    resp: {
-                        RespCode: 'S2',
-                        response: "Bad request, please try again!",
-                    },
-                    success: false,
-                    message: 'Connection error'
-                });
-            }
-            console.log('Data berhasil dikirim:', postData);
-        });
-    });
-
-
-    // Listener untuk menangkap data dari EDC
-    parser.on('data', (data) => {
-        console.log('Raw Data Diterima:', data); // Log data mentah
-        console.log('Response Message EDC:', data.toString());
-
-        port.write('\x06'); // Mengirim ACK kembali ke EDC 
-    });
-
-    // Handler untuk kesalahan koneksi
-    port.on('error', (err) => {
-        console.error('Connection error:', err.message);
-        const response = {
-            resp: {
-                RespCode: 'S2',
-                response: "Bad request, please try again!",
-            },
-            success: false,
-            message: 'Connection error'
+        const sendBack = {
+            responseMessage: responseMessage,
+            resp: utils.strToArray(responseMessage, 3),
         };
-        res.json(response);
-        port.close();
-    });
+        console.log(sendBack);
+        
+        
+        if (sendBack.resp.RespCode != '') {
+            console.log('Full message received:', receivedData.trim());
+            receivedData = '';  // Reset buffer
 
-    // Handler untuk penutupan koneksi
-    port.on('close', () => {
-        console.log('Connection closed');
-    });
-
-    // Tunggu selama 60 detik untuk respons dari EDC
-    await sleep(60000); // 60 detik timeout
-
-    // Jika tidak ada respons dari EDC dalam 60 detik, kirim timeout response
-    if (!res.headersSent) {
-        const response = {
-            success: false,
-            resp: {
-                RespCode: 'S2',
-                response: "Bad request, please try again!",
-            },
-            message: 'Timeout waiting for response'
-        };
-        res.json(response);
-        port.close();
-    }
-
-
-});
-
-
-
-// API untuk ping COM port
-app.get('/ping', async (req, res) => {
-    const comPort = req.query.port; // Ambil port dari query parameter
-
-    if (!comPort) {
-        return res.status(400).json({
-            success: false,
-            message: 'COM port is required. Please provide ?port=COM6 or equivalent.',
-        });
-    }
-
-    let port;
-    try {
-        port = new SerialPort({
-            path: comPort, // Path dinamis dari query params
-            baudRate: 9600,
-            autoOpen: false,
-        });
-
-        const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
-
-        // Membuka port secara asinkron
-        await new Promise((resolve, reject) => {
-            port.open((err) => {
-                if (err) return reject(err); // Error saat membuka port
-                console.log(`Port ${comPort} OPENED.`);
-                resolve();
+            port.write('\x06', function (err) {
+                if (err) throw err;
+                console.log("done, send ACK");
             });
-        });
 
-        // Membaca data dari port
-        let receivedData = '';
+            responseSent = true;
+            clearTimeout(myTimeout);
+            res.status(200).json({   
+                success: true,
+                message: 'Transaction approved',
+                responseMessage: data.toString(),
+                resp: utils.strToArray(data, 3),
 
-        parser.on('data', (data) => {
-            console.log('Received Data:', data);
-            receivedData += data; // Mengumpulkan data
-        });
+            });
 
-        // Timeout simulasi untuk menunggu data diterima
-        // await new Promise((resolve) => setTimeout(resolve, 3000));
-
-        const response = {
-            success: true,
-            message: `Ping Ok to ${comPort}`,
-            resp: {
-                open: true,
-                data: receivedData || 'No data received',
-                error: false,
-            },
-        };
-
-        // Tutup port setelah selesai
-        await new Promise((resolve, reject) => {
             port.close((err) => {
-                if (err) return reject(err); // Error saat menutup port
-                console.log(`Port ${comPort} CLOSED .`);
-                resolve();
-            });
-        });
-
-        res.status(200).json(response); // Kirim respons
-
-    } catch (err) {
-        console.error('Error:', err.message);
-
-        // Pastikan port ditutup jika terjadi error
-        if (port && port.isOpen) {
-            port.close((closeErr) => {
-                if (closeErr) console.error('Failed to close port:', closeErr.message);
+                if (err) console.error('Failed to close port:', err.message);
+                else console.log('Port closed.');
             });
         }
+    });
 
-        const errorResponse = {
-            success: false,
-            message: `Failed to communicate with ${comPort}`,
-            error: err.message,
-            resp: {
-                open: false,
-                error: true,
-            },
-        };
 
-        res.status(500).json(errorResponse); // Kirim respons error
-    }
+    // Pastikan port terbuka sebelum mengirim dan menerima data
+    port.open((err) => {
+        if (err) {
+            console.error('Failed to open port:', err.message);
+            return res.status(500).json({ success: false, message: 'Failed to open port', error: err.message });
+        }
+        console.log('Port opened.');
+        port.write(postData, (err) => {
+            if (err) {
+                console.error('Failed to send data:', err.message);
+                port.close(); // Pastikan port ditutup saat gagal
+                responseSent = true;
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to send data',
+                    error: err.message
+                });
+            }
+            console.log(`Data sent: ${postData}`);
+        });
+    });
+
+
+
+    const myTimeout = setTimeout(() => {
+        console.log(responseSent);
+        if (!responseSent) {
+            responseSent = true; // Tanda
+            res.status(500).json({
+                success: false,
+                message: 'Timeout: No response from device',
+            });
+
+            // Tutup port jika timeout terjadi
+            port.close((err) => {
+                if (err) console.error('Failed to close port:', err.message);
+                else console.log('Port closed after timeout.');
+            });
+        }
+    }, 60 * 1000);
+
+
+
+
 });
+ 
 
-
-app.get('/checkServer', async (req, res) => {
-    // setTimeout(() => {
+app.get('/testPrint', async (req, res) => {
+ 
     const response = {
-        req: req.query['a'],
-        message: 'Echo response',
-        timestamp: new Date().toISOString()
+        success: true,
+        message: 'testPrint Ok', 
     };
-    res.json(response);
-    // }, 5000);
+    //   addLogs(JSON.stringify(response));
+    res.status(200).json(response); // Kirim respons OK dengan data port 
 });
 
-app.listen(port, () => {
-    console.log(`Server1 is running on http://localhost:${port}`);
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
+ 
+ 
 
-
-function ecrData(transType, transAmount, RNN) {
+function ecrData_SAVE(transType, transAmount, RNN) {
     const binArray = [];
     const bin = [];
     let version = "\x02";
