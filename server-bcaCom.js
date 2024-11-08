@@ -172,6 +172,127 @@ app.get('/echoTest', async (req, res) => {
 
 });
 
+app.get('/echoTest2', async (req, res) => {
+    let responseSent = false; // Flag untuk mencegah pengiriman respons ganda
+
+    const comPort = req.query.port; // Ambil port dari query parameter
+
+   // const ver = req.query.ver;
+    let echoTest = echoTestBCA;
+    if(req.query.ver == '1'){
+        echoTest =  process.env.ECHOTESTBCA_V1;
+    }
+    else if(req.query.ver == '2'){
+        echoTest =  process.env.ECHOTESTBCA_V2;
+    }
+    else if(req.query.ver == '3'){
+        echoTest =  process.env.ECHOTESTBCA_V3;
+    } 
+    else{
+        echoTest =  process.env.ECHOTESTBCA;
+    }
+
+    if (!comPort) {
+        return res.status(400).json({
+            success: false,
+            message: 'COM port is required. Please provide ?port=COM6 or equivalent.',
+        });
+    }
+
+
+    let port;
+    port = new SerialPort({
+        path: comPort, // Path dinamis dari query params
+        baudRate: 9600,
+        autoOpen: false,
+    });
+
+    // Membaca data respons dari perangkat
+    let receivedData = '';
+    let resp = '';
+    // Baca data secara manual tanpa ReadlineParser
+    port.on('data', (chunk) => {
+        receivedData += chunk.toString();  // Konversi buffer ke string
+        console.log('Received chunk:', chunk.toString());
+        resp = chunk.toString();
+
+        const sendBack = {
+            resp: resp,
+            strToArray: utils.strToArray(resp, 3),
+        };
+        console.log(sendBack);
+
+        // Jika seluruh pesan diterima (gunakan kondisi sesuai kebutuhan)
+        if (sendBack.strToArray.OfflineFlag == 'Y') {
+            console.log('Full message received:', receivedData.trim());
+            receivedData = '';  // Reset buffer
+
+            port.write('\x06', function (err) {
+                if (err) throw err;
+                console.log("done, send ACK");
+            });
+
+            responseSent = true;
+            res.status(200).json({  
+                success: true,
+                message: 'Echo Test success',
+                resp: utils.strToArray(resp, 3),
+                req : req.query,
+            });
+
+            port.close((err) => {
+                if (err) console.error('Failed to close port:', err.message);
+                else console.log('Port closed.');
+            });
+        }
+    });
+
+
+    // Pastikan port terbuka sebelum mengirim dan menerima data
+    port.open((err) => {
+        if (err) {
+            console.error('Failed to open port:', err.message);
+            return res.status(500).json({ success: false, message: 'Failed to open port', error: err.message });
+        }
+        console.log('Port opened.');
+        port.write(echoTestBCA, (err) => {
+            if (err) {
+                console.error('Failed to send data:', err.message);
+                port.close(); // Pastikan port ditutup saat gagal
+                responseSent = true;
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to send data',
+                    error: err.message
+                });
+            }
+            console.log(`Data sent: ${echoTestBCA}`);
+        });
+    });
+
+
+
+    setTimeout(() => {
+        console.log(responseSent);
+        if (!responseSent) {
+            responseSent = true; // Tanda
+            res.status(500).json({
+                success: false,
+                message: 'Timeout: No response from device',
+            });
+
+            // Tutup port jika timeout terjadi
+            port.close((err) => {
+                if (err) console.error('Failed to close port:', err.message);
+                else console.log('Port closed after timeout.');
+            });
+        }
+    }, 10 * 1000);
+
+
+
+});
+
 app.get('/readData', async (req, res) => {
 
     let port;
