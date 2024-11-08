@@ -328,6 +328,85 @@ app.get('/echoTest', async (req, res) => {
 
 });
 
+app.get('/echoTest2', async (req, res) => {
+    const client = new net.Socket();
+    const ip = req.query.ip; 
+    let echoTest = echoTestBCA;
+    if(req.query.ver == '1'){
+        echoTest =  process.env.ECHOTESTBCA_V1;
+    }
+    else if(req.query.ver == '2'){
+        echoTest =  process.env.ECHOTESTBCA_V2;
+    }
+    else if(req.query.ver == '3'){
+        echoTest =  process.env.ECHOTESTBCA_V3;
+    } 
+    else{
+        echoTest =  process.env.ECHOTESTBCA;
+    }
+
+    let date = new Date() +" "+ ip;
+    addLogs("");
+    addLogs(date);
+
+    client.connect({ host: ip, port: env_port }, function () {
+        console.log(`BCA 17 - server on  ${ip}:${env_port}`);
+        addLogs("echoTestBCA "+echoTest);  
+        client.write(echoTest);
+    });
+    // Listener untuk menangkap data dari EDC
+    client.on('data', function (data) {
+        console.log('Received data from EDC:', data.toString());
+        client.write('\x06'); // Mengirim ACK kembali ke EDC
+
+        // Misalnya, lakukan pengecekan untuk kondisi transaksi yang diinginkan
+        if (data.toString().length > 50) {
+            // Jika transaksi disetujui, kirim respons JSON 
+
+            const response = {
+                success: true,
+                message: 'Echo Test success',
+                resp: utils.strToArray(data, 3),
+                req : req.query,
+            };
+            addLogs(JSON.stringify(response));
+            client.destroy(); // Hentikan koneksi setelah selesai
+            res.json(response); // Kirim respons JSON ke client
+        }
+    });
+
+    // Handler untuk kesalahan koneksi
+    client.on('error', function (err) {
+        console.error('Connection error:', err.message);
+        const response = {
+            success: false,
+            message: 'Connection error'
+        };
+        addLogs(JSON.stringify(response));
+        res.status(500).json(response); // Kirim respons error JSON ke client
+        client.destroy(); // Hentikan koneksi setelah selesai
+    });
+
+    // Handler untuk penutupan koneksi
+    client.on('close', function () {
+        console.log('Connection closed');
+    });
+
+    // Tunggu selama 10 detik untuk respons dari EDC
+    await sleep(60000); // 10 detik timeout
+
+    // Jika tidak ada respons dari EDC dalam 10 detik, kirim timeout response
+    if (!res.headersSent) {
+        const response = {
+            success: false,
+            message: 'Timeout waiting for response'
+        };
+        addLogs(JSON.stringify(response));
+        res.status(500).json(response); // Kirim respons timeout JSON ke client
+        client.destroy(); // Hentikan koneksi setelah selesai
+    }
+
+});
 
 app.get('/checkServer', async (req, res) => {
     setTimeout(() => {
